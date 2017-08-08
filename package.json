@@ -16,7 +16,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/jackerman/blackjack.git"
+    "url": "git+ssh://git@github.com/jackerman/React-Blackjack.git"
   },
   "keywords": [
     "javascript",

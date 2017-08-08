@@ -13,7 +13,7 @@ export default class App extends Component {
       money: 5000,
       bet: 50,
       cardsInHand: 2, // this is not yet implemented, will be used to animate the transition in for the next card when hitting... maybe
-      turn: 'init'
+      turn: 'user'
     }
 
     // Bind class methods
@@ -52,29 +52,9 @@ export default class App extends Component {
   }
 
   calculateAIScore(){
-    let aces = false;
     const score = this.props.store.getState().aiCards
     .reduce((total, card) => {
-        let value = card.value;
-        /*
-         * ====Account for Aces====
-         * - only 1 ace will be used as an 11
-         * - check for no aces & total is less than or equal to 10
-         *     => if truthy, then ace value is 11 & set aces true
-         * - check if AI has soft 17 (AI must hit on a soft 17)
-         *     => if truthy, minus 10 from total
-         * - check for aces & total-11 is greater than 10
-         *     => if truthy, then minus 10 from total
-         */
-        if(!aces && value === 1 && total <= 10){
-          value = 11;
-          aces = true;
-        } else if(aces && total === 17){
-          total -= 10;
-        } else if(aces && total-11 > 10){
-          total -= 10;
-        }
-        return total + value;
+        return total + card.value;
     } , 0);
     return score;
   }
@@ -105,7 +85,7 @@ export default class App extends Component {
     } else if(this.isBlackjack(userScore)){
         return this.setWinner('Player', 'Blackjack')
     }
-    if(aiScore >= 17 && turn !== 'init'){
+    if(aiScore > 16 && turn === 'ai'){
       if(aiScore === userScore){
         return this.setWinner('Tie', 'Push');
       } else if(aiScore > userScore){
@@ -133,6 +113,7 @@ export default class App extends Component {
       $('#hit').show();
       $('#stand').show();
       $('.dealer-face-down').show();
+      $('#show-bet').show();
       money -= bet;
       store.dispatch(setAICards(store.getState().deck));
       store.dispatch(setUserCards(store.getState().deck));
@@ -160,8 +141,9 @@ export default class App extends Component {
     $('#new-game').hide();
     $('#winning-statement').html('');
     $('#place-bet').show();
+    $('#show-bet').hide();
     this.setState({
-      turn: 'init',
+      turn: 'user',
       cardsInHand: 2
     });
   }
@@ -201,10 +183,10 @@ export default class App extends Component {
   }
 
   stackDeck(margin){
-    let left = 0;
+    let left = 25;
     let i = 0;
     $('.deck').each(function(){
-      $(this).css('z-index', i);
+      $(this).css('z-index', i-100);
       $(this).animate({left: left + 'px'}, 700);
       left = left + margin;
       i++;
@@ -212,12 +194,10 @@ export default class App extends Component {
   }
 
   stand(){
-    //var hitAI;
     $('#hit').hide();
     $('#stand').hide();
-    this.setState({ turn : 'ai' });
+    this.state.turn = 'ai';
     // Automate dealer's (AI) turn
-    //if (hitAI) return; // stop from double clicking
     //hitAI = setInterval(function(){
       //if (SCORE_ < 17) {
       while(this.calculateAIScore() < 17){
@@ -247,6 +227,16 @@ export default class App extends Component {
     this.checkWin();
   }
 
+  testSoft17AI(){
+    this.props.store.dispatch(setAICards([{name:"Ace of Diamonds", value: 1}, {name:"Five of Diamonds", value: 5}]));
+    this.props.store.dispatch(hitAI([{name:"Ace of Diamonds", value: 1}]));
+  }
+
+  testHard17AI(){
+    this.props.store.dispatch(setAICards([{name:"King of Diamonds", value: 10}, {name:"Six of Diamonds", value: 6}]));
+    this.props.store.dispatch(hitAI([{name:"Ace of Diamonds", value: 1}]));
+  }
+
   render(){
     const { money, bet } = this.state;
     const { aiCards, deck, userCards } = this.props.store.getState();
@@ -254,7 +244,7 @@ export default class App extends Component {
     <div className="app">
       <Deck deck={deck} />
       <center>
-        <Bet money={money} handleBet={this.handleBet.bind(this)} handleClick={this.changeBet} />
+        <Bet bet={bet} money={money} handleBet={this.handleBet.bind(this)} handleClick={this.changeBet} />
       <br/> <br/>
       <AIHand
         aiCards={aiCards}
@@ -262,8 +252,6 @@ export default class App extends Component {
         turn={this.state.turn}
       />
       <br />
-      <section id="show-bet">Bet: ${bet}</section>
-      <section id="winning-statement"> </section>
       <br />
       <button id="new-game" onClick={this.newGame}>New Game</button><br />
         <UserHand
@@ -275,7 +263,9 @@ export default class App extends Component {
       </center>
       <div id="test-methods">
         <button onClick={this.testBlackjackUser.bind(this)}>Blackjack - User</button><br />
-        <button onClick={this.testBlackjackAI.bind(this)}>Blackjack - AI</button>
+        <button onClick={this.testBlackjackAI.bind(this)}>Blackjack - AI</button><br />
+        <button onClick={this.testSoft17AI.bind(this)}>Soft 17 - AI</button>
+        <button onClick={this.testHard17AI.bind(this)}>Hard 17 - AI</button>
       </div>
     </div>
     );
