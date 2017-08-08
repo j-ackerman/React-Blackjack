@@ -10,7 +10,7 @@ const UserHand = props => {
         <button onClick={handleStand} className="button-stand" id="stand" style={displayNone}>Stand</button>
         <br /><br />
       <section id="user-cards" className="cards">{total}
-        {userCards.map((card, index) => <Card key={index} card={card} />)}
+        {userCards.map((card, index) => <Card id={index} key={index} card={card} />)}
       </section>
       </div>
     );

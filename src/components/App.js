@@ -12,8 +12,8 @@ export default class App extends Component {
     this.state = {
       money: 5000,
       bet: 50,
-      cardsInHand: 2,
-      turn: 'user'
+      cardsInHand: 2, // this is not yet implemented, will be used to animate the transition in for the next card when hitting... maybe
+      turn: 'init'
     }
 
     // Bind class methods
@@ -95,24 +95,29 @@ export default class App extends Component {
   }
 
   checkWin(){
-    const userScore = this.calculateUserScore();
     const aiScore = this.calculateAIScore();
-    if(this.isBust(userScore)){
-      this.setWinner('Dealer', 'Bust');
-    } else if(this.isBlackjack(userScore)){
-      this.setWinner('Player1', 'Blackjack')
+    const { turn } = this.state;
+    const userScore = this.calculateUserScore();
+    if(turn === 'user'){
+      if(this.isBust(userScore)){
+        return this.setWinner('Dealer', 'Bust');
+      }
+      else if(this.isBlackjack(userScore)){
+        return this.setWinner('Player', 'Blackjack')
+      }
     }
-    if(turn === 'ai'){
-      if(this.isBust(aiScore)){
-        this.setWinner('Player1','Dealer busts');
-      } else if(this.isBlackjack(aiScore)){
-        this.setWinner('Dealer', 'Blackjack');
-      } else if(aiScore === userScore){
-        this.setWinner('Dealer', 'Push');
+    if(this.isBust(aiScore)){
+      return this.setWinner('Player','Bust');
+    } else if(this.isBlackjack(aiScore)){
+      return this.setWinner('Dealer', 'Blackjack');
+    }
+    if(aiScore >= 17 && turn !== 'init'){
+      if(aiScore === userScore){
+        return this.setWinner('Dealer', 'Push');
       } else if(aiScore > userScore){
-        this.setWinner('Dealer');
+        return this.setWinner('Dealer');
       } else if(aiScore < userScore){
-        this.setWinner('Player');
+        return this.setWinner('Player');
       }
     }
   }
@@ -121,32 +126,34 @@ export default class App extends Component {
     this.stackDeck(5);
   }
 
+  componentWillUpdate(){
+    //this.checkWin();
+  }
+
   handleBet(){
     var { bet, money } = this.state;
     const { store } = this.props;
+    const turn = user;
     if(bet >= 2 && bet <= 500 && parseInt(bet)){
       $('#place-bet').hide();
       $('#hit').show();
       $('#stand').show();
+      $('.dealer-face-down').show();
       $('#show-bet').html(`Bet: $${this.state.bet}`);
       money -= bet;
-      this.setState({ bet, money });
       store.dispatch(setAICards(store.getState().deck));
       store.dispatch(setUserCards(store.getState().deck));
+      this.checkWin(); // check for natural blackjack
+      this.setState({ bet, money, turn });
     } else {
       alert('Please enter a value between $2 and $500');
     }
   }
 
   hitMe(){
-    var { cardsLeft, cardsInHand } = this.state;
     const { store } = this.props;
-    // animate
-    //$('#' + cardsInHand).fadein(2000);
+    // animate card going to user hand
     $('.hit').animate({left: "+=300", bottom: "-=376"}, 300);
-    this.setState({
-      cardsInHand: cardsInHand++
-    });
     store.dispatch(hitUser(store.getState().deck));
     $('.hit').animate({left: "-=300", bottom: "+=376"}, 0);
     this.checkWin();
@@ -160,14 +167,32 @@ export default class App extends Component {
     $('#new-game').hide();
     $('#winning-statement').html('');
     $('#place-bet').show();
-    this.setState({ turn: 'user' });
+    this.setState({
+      turn: 'init',
+      cardsInHand: 2
+    });
   }
 
   setWinner(winner, winDetails = null){
+    var { money, bet } = this.state;
+    if(winner === 'Player'){
+      switch(winDetails){
+        case 'Blackjack':
+          money += ((bet*2) + (bet/2));
+          break;
+        case 'Push':
+          money += bet;
+          break;
+        default:
+          money += (bet*2);
+      }
+    }
     $('#hit').hide();
     $('#stand').hide();
     $('#new-game').show();
-    let winningStatement = winner !== null && `${winDetails}! `;
+    $('.dealer-face-down').hide();
+    this.setState({ turn: 'ai', money })
+    let winningStatement = winDetails !== null && `${winDetails}! `;
     winningStatement += `${winner} wins!`;
     $('#winning-statement').html(winningStatement);
     this.stackDeck(0);
@@ -191,11 +216,25 @@ export default class App extends Component {
   }
 
   stand(){
-    $('#hit').disabled = true;
+    //var hitAI;
+    $('#hit').hide();
+    $('#stand').hide();
+    this.setState({ turn : 'ai' });
     // Automate dealer's (AI) turn
-    while(this.calculateAIScore() < 17){
-      this.props.store.dispatch(hitAI(this.props.store.getState().deck));
-    }
+    //if (hitAI) return; // stop from double clicking
+    //hitAI = setInterval(function(){
+      //if (SCORE_ < 17) {
+      while(this.calculateAIScore() < 17){
+        $('.hit').animate({left: "+=300", bottom: "-=30"}, 300);
+        this.props.store.dispatch(hitAI(this.props.store.getState().deck));
+        $('.hit').animate({left: "-=300", bottom: "+=30"}, 0);
+      }
+      this.checkWin();
+      //} else {
+        //clearInterval(hitAI); // Stop the AI from hitting
+        //hitAI = null;
+      //}
+    //}, 1000);
   }
 
   isBlackjack = (score) => (score === 21) ? true : false;
@@ -212,7 +251,9 @@ export default class App extends Component {
       <br/> <br/>
       <AIHand
         aiCards={aiCards}
-        total={this.calculateAIScore()} />
+        total={this.calculateAIScore()}
+        turn={this.state.turn}
+      />
       <br />
       <section id="show-bet">Bet: ${bet}</section>
       <section id="winning-statement"> </section>

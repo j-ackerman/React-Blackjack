@@ -3,11 +3,18 @@ import Card from './Card'
 
 const AIHand = props => {
   let { aiCards } = props;
-  aiCards = aiCards.slice(1);
     return (
       <div className="dealer">
       <section id="ai-cards" className="cards">{props.total}
-        {aiCards.map((card, index) => <Card key={index} card={card} />)}
+        {props.turn === 'user' && aiCards.map((card, index) => // During users turn hide 2nd card
+            index !== aiCards.length - 1
+          ? <Card key={index} card={card} />
+          : <img key={index} className="card dealer-face-down" src="img/card_back.png" />
+        )}
+        {aiCards.map((card, index) => // During AI/Dealer's turn reveal all cards
+            (props.turn === 'ai')
+          && <Card key={index} card={card} />
+        )}
       </section>
       </div>
     );
