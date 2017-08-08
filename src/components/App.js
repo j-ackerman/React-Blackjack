@@ -80,40 +80,34 @@ export default class App extends Component {
   }
 
   changeBet(event){
-    const bet = event.target.value;
+    let bet = event.target.value;
     if(bet === ''){
       return this.setState({ bet: 0 });
     }
-    /*
-    $('#bet-custom').on('focus', () => {
-      $('#bet-50').removeClass('bet-selected');
-    });
-    $('.bet').on('click', () => {
-      $('#bet' + this.state.bet).addClass('bet-selected');
-    });*/
+    bet = bet.split('').map(character => {
+      if(!isNaN(character)) return character;
+    }).join('');
     this.setState({ bet });
   }
 
-  checkWin(){
+  checkWin(){ // TO DO: THIS IS STILL NOT 100% CORRECT, ACCOUNT FOR ALL SCENARIOS
     const aiScore = this.calculateAIScore();
     const { turn } = this.state;
     const userScore = this.calculateUserScore();
-    if(turn === 'user'){
-      if(this.isBust(userScore)){
-        return this.setWinner('Dealer', 'Bust');
-      }
-      else if(this.isBlackjack(userScore)){
-        return this.setWinner('Player', 'Blackjack')
-      }
-    }
-    if(this.isBust(aiScore)){
-      return this.setWinner('Player','Bust');
+    if(this.isBlackjack(userScore) && this.isBlackjack(aiScore)){
+        return this.setWinner('Tie', 'Push');
+    } else if(this.isBust(aiScore)){
+        return this.setWinner('Player','Bust');
     } else if(this.isBlackjack(aiScore)){
-      return this.setWinner('Dealer', 'Blackjack');
+        return this.setWinner('Dealer', 'Blackjack');
+    } else if(this.isBust(userScore)){
+        return this.setWinner('Dealer', 'Bust');
+    } else if(this.isBlackjack(userScore)){
+        return this.setWinner('Player', 'Blackjack')
     }
     if(aiScore >= 17 && turn !== 'init'){
       if(aiScore === userScore){
-        return this.setWinner('Dealer', 'Push');
+        return this.setWinner('Tie', 'Push');
       } else if(aiScore > userScore){
         return this.setWinner('Dealer');
       } else if(aiScore < userScore){
@@ -139,7 +133,6 @@ export default class App extends Component {
       $('#hit').show();
       $('#stand').show();
       $('.dealer-face-down').show();
-      $('#show-bet').html(`Bet: $${this.state.bet}`);
       money -= bet;
       store.dispatch(setAICards(store.getState().deck));
       store.dispatch(setUserCards(store.getState().deck));
@@ -173,7 +166,7 @@ export default class App extends Component {
     });
   }
 
-  setWinner(winner, winDetails = null){
+  setWinner(winner, winDetails){
     var { money, bet } = this.state;
     if(winner === 'Player'){
       switch(winDetails){
@@ -192,9 +185,12 @@ export default class App extends Component {
     $('#new-game').show();
     $('.dealer-face-down').hide();
     this.setState({ turn: 'ai', money })
-    let winningStatement = winDetails !== null && `${winDetails}! `;
-    winningStatement += `${winner} wins!`;
-    $('#winning-statement').html(winningStatement);
+    if(winner !== 'Tie'){
+      $('#winning-statement').html(`${winner} wins!`);
+    }
+    if(winDetails !== undefined){
+      $('#winning-statement').prepend(`${winDetails}! `);
+    }
     this.stackDeck(0);
   }
 
@@ -240,6 +236,17 @@ export default class App extends Component {
   isBlackjack = (score) => (score === 21) ? true : false;
   isBust = (score) => (score > 21) ? true : false;
 
+  //// TESTING methods
+
+  testBlackjackUser(){
+    this.props.store.dispatch(setUserCards([{name:"Ace of Diamonds", value: 1}, {name:"King of Diamonds", value: 10}]));
+    this.checkWin();
+  }
+  testBlackjackAI(){
+    this.props.store.dispatch(setAICards([{name:"Ace of Diamonds", value: 1}, {name:"King of Diamonds", value: 10}]));
+    this.checkWin();
+  }
+
   render(){
     const { money, bet } = this.state;
     const { aiCards, deck, userCards } = this.props.store.getState();
@@ -266,6 +273,10 @@ export default class App extends Component {
           handleStand={this.stand} />
         <br />
       </center>
+      <div id="test-methods">
+        <button onClick={this.testBlackjackUser.bind(this)}>Blackjack - User</button><br />
+        <button onClick={this.testBlackjackAI.bind(this)}>Blackjack - AI</button>
+      </div>
     </div>
     );
   }
