@@ -133,7 +133,7 @@ export default class App extends Component {
   handleBet(){
     var { bet, money } = this.state;
     const { store } = this.props;
-    const turn = user;
+    const turn = 'user';
     if(bet >= 2 && bet <= 500 && parseInt(bet)){
       $('#place-bet').hide();
       $('#hit').show();
