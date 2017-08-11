@@ -2,11 +2,11 @@ import React from 'react';
 
 const Bet = (props) => {
   return (
-  <div className="black-box bet-box">
-  <section id="show-bet">Bet: ${props.bet}</section>
+  <div>
+  <section id="show-bet" className="black-box bet-box">Bet: ${props.bet}</section>
   <section id="winning-statement"> </section>
   <section id="money" className="black-box money-box"><font className="money-text">${props.money}</font></section>
-  <section id="place-bet">
+  <section id="place-bet" className="black-box bet-box">
     <font className="bet-text">Bet: $</font><input type="text"
             id="bet-custom"
             onChange={props.handleClick}

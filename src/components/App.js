@@ -1,11 +1,12 @@
 import React, { Component } from 'react';
+import { connect } from 'react-redux';
 import AIHand from './AIHand';
 import Bet from './Bet';
 import Deck from './Deck';
 import UserHand from './UserHand';
 import { setAICards, setUserCards, fetchDeck, hitUser, hitAI } from '../actions/blackjack_actions';
 
-export default class App extends Component {
+class App extends Component {
   constructor(){
     super();
 
@@ -21,6 +22,7 @@ export default class App extends Component {
     this.calculateUserScore = this.calculateUserScore.bind(this);
     this.changeBet = this.changeBet.bind(this);
     this.checkWin = this.checkWin.bind(this);
+    this.handleBet = this.handleBet.bind(this);
     this.hitMe = this.hitMe.bind(this);
     this.newGame = this.newGame.bind(this);
     this.stand = this.stand.bind(this);
@@ -29,7 +31,7 @@ export default class App extends Component {
 
   calculateUserScore(){
     let aces = false;
-    const score = this.props.store.getState().userCards
+    const score = this.props.userCards
     .reduce((total, card) => {
         let value = card.value;
         /*
@@ -52,7 +54,7 @@ export default class App extends Component {
   }
 
   calculateAIScore(){
-    const score = this.props.store.getState().aiCards
+    const score = this.props.aiCards
     .reduce((total, card) => {
         return total + card.value;
     } , 0);
@@ -69,6 +71,7 @@ export default class App extends Component {
     }).join('');
     this.setState({ bet });
   }
+
 
   checkWin(){ // TO DO: THIS IS STILL NOT 100% CORRECT, ACCOUNT FOR ALL SCENARIOS
     const aiScore = this.calculateAIScore();
@@ -100,13 +103,13 @@ export default class App extends Component {
     this.stackDeck(5);
   }
 
-  componentWillUpdate(){
+  componentDidUpdate(){
     //this.checkWin();
   }
 
   handleBet(){
     var { bet, money } = this.state;
-    const { store } = this.props;
+    const { setAICards, setUserCards, deck } = this.props;
     const turn = 'user';
     if(bet >= 2 && bet <= 500 && parseInt(bet)){
       $('#place-bet').hide();
@@ -115,8 +118,8 @@ export default class App extends Component {
       $('.dealer-face-down').show();
       $('#show-bet').show();
       money -= bet;
-      store.dispatch(setAICards(store.getState().deck));
-      store.dispatch(setUserCards(store.getState().deck));
+      setAICards(deck);
+      setUserCards(deck);
       this.checkWin(); // check for natural blackjack
       this.setState({ bet, money, turn });
     } else {
@@ -125,17 +128,16 @@ export default class App extends Component {
   }
 
   hitMe(){
-    const { store } = this.props;
     // animate card going to user hand
     $('.hit').animate({left: "+=300", bottom: "-=376"}, 300);
-    store.dispatch(hitUser(store.getState().deck));
+    this.props.hitUser(this.props.deck);
     $('.hit').animate({left: "-=300", bottom: "+=376"}, 0);
     this.checkWin();
+
   }
 
   newGame(event){
-    const { store } = this.props;
-    store.dispatch(fetchDeck());
+    this.props.fetchDeck();
     //this.shuffle();
     this.stackDeck(5);
     $('#new-game').hide();
@@ -163,7 +165,7 @@ export default class App extends Component {
       }
     }
     $('#hit').hide();
-    $('#stand').hide();
+    $('#stand').hide(); /// ASYNC??? WHY ISNT IT UPDATING RIGHT - 1 LATE (you bust, then you hit again and THEN it says you bust)
     $('#new-game').show();
     $('.dealer-face-down').hide();
     this.setState({ turn: 'ai', money })
@@ -196,21 +198,14 @@ export default class App extends Component {
   stand(){
     $('#hit').hide();
     $('#stand').hide();
-    this.state.turn = 'ai';
+    this.setState({ turn: 'ai' });// = 'ai';
     // Automate dealer's (AI) turn
-    //hitAI = setInterval(function(){
-      //if (SCORE_ < 17) {
-      while(this.calculateAIScore() < 17){
-        $('.hit').animate({left: "+=300", bottom: "-=30"}, 300);
-        this.props.store.dispatch(hitAI(this.props.store.getState().deck));
-        $('.hit').animate({left: "-=300", bottom: "+=30"}, 0);
-      }
-      this.checkWin();
-      //} else {
-        //clearInterval(hitAI); // Stop the AI from hitting
-        //hitAI = null;
-      //}
-    //}, 1000);
+    $('.hit').animate({left: "+=300", bottom: "-=30"}, 300);
+    while(this.calculateAIScore() < 17){
+      this.props.hitAI(this.props.deck);
+    }
+    $('.hit').animate({left: "-=300", bottom: "+=30"}, 0);
+    //this.checkWin();
   }
 
   isBlackjack = (score) => (score === 21) ? true : false;
@@ -219,32 +214,32 @@ export default class App extends Component {
   //// TESTING methods
 
   testBlackjackUser(){
-    this.props.store.dispatch(setUserCards([{name:"Ace of Diamonds", value: 1}, {name:"King of Diamonds", value: 10}]));
+    this.props.setUserCards([{name:"Ace of Diamonds", value: 1}, {name:"King of Diamonds", value: 10}]);
     this.checkWin();
   }
   testBlackjackAI(){
-    this.props.store.dispatch(setAICards([{name:"Ace of Diamonds", value: 1}, {name:"King of Diamonds", value: 10}]));
+    this.props.setAICards([{name:"Ace of Diamonds", value: 1}, {name:"King of Diamonds", value: 10}]);
     this.checkWin();
   }
 
   testSoft17AI(){
-    this.props.store.dispatch(setAICards([{name:"Ace of Diamonds", value: 1}, {name:"Five of Diamonds", value: 5}]));
-    this.props.store.dispatch(hitAI([{name:"Ace of Diamonds", value: 1}]));
+    this.props.setAICards([{name:"Ace of Diamonds", value: 1}, {name:"Five of Diamonds", value: 5}]);
+    this.props.hitAI([{name:"Ace of Diamonds", value: 1}]);
   }
 
   testHard17AI(){
-    this.props.store.dispatch(setAICards([{name:"King of Diamonds", value: 10}, {name:"Six of Diamonds", value: 6}]));
-    this.props.store.dispatch(hitAI([{name:"Ace of Diamonds", value: 1}]));
+    this.props.setAICards([{name:"King of Diamonds", value: 10}, {name:"Six of Diamonds", value: 6}]);
+    this.props.hitAI([{name:"Ace of Diamonds", value: 1}]);
   }
 
   render(){
     const { money, bet } = this.state;
-    const { aiCards, deck, userCards } = this.props.store.getState();
+    const { aiCards, deck, userCards } = this.props;
     return (
     <div className="app">
       <Deck deck={deck} />
       <center>
-        <Bet bet={bet} money={money} handleBet={this.handleBet.bind(this)} handleClick={this.changeBet} />
+        <Bet bet={bet} money={money} handleBet={this.handleBet} handleClick={this.changeBet} />
       <br/> <br/>
       <AIHand
         aiCards={aiCards}
@@ -271,3 +266,35 @@ export default class App extends Component {
     );
   }
 }
+
+const mapStateToProps = state => {
+  return {
+    deck: state.deck,
+    aiCards: state.aiCards,
+    userCards: state.userCards
+  }
+}
+
+const mapDispatchToProps = dispatch => {
+  return {
+    fetchDeck: () => {
+      dispatch(fetchDeck())
+    },
+    hitAI: deck => {
+      dispatch(hitAI(deck))
+    },
+    hitUser: deck => {
+      dispatch(hitUser(deck))
+    },
+    setAICards: deck => {
+      dispatch(setAICards(deck))
+    },
+    setUserCards: deck => {
+      dispatch(setUserCards(deck))
+    }
+  }
+}
+
+const connectedApp = connect(mapStateToProps, mapDispatchToProps)(App);
+
+export default connectedApp;

@@ -6,14 +6,16 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import App from './components/App';
 import { createStore } from 'redux';
+import { Provider } from 'react-redux';
 import blackjackReducer from './reducers/blackjack_reducer';
 import { fetchDeck } from './actions/blackjack_actions';
 
 const store = createStore(blackjackReducer);
 
-const render = function(){
-  ReactDOM.render(<App store={store} />, document.getElementById('container'));
-}
-
-store.subscribe(render);
 store.dispatch(fetchDeck());
+
+ReactDOM.render(
+  <Provider store={store}>
+  <App />
+  </Provider>
+  , document.getElementById('container'));
